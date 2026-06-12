@@ -372,7 +372,7 @@ tbody tr.overdue-row:hover { background: #fed7d7; }
 
 <script>
 // ── Google Apps Script URL (same as SOC Card form) ──────────────────────
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbxTlqkTjkyCfq3Mc6VgBo-rUpnNW_jG8ygJTEb_3YLmmOdba4-PI5GqXNgsKhE0DEw/exec';
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbyVv1VVwgzF0czoSFms-O8FGPiOZ2plyWesoXBELcbZyCzd5oU7mwhVdZg_DL0B5aQ/exec';
 
 let data = [];
 let isSyncing = false;
@@ -397,16 +397,61 @@ function showSyncStatus(msg, color = '#2E75B6') {
 function sheetRowToEntry(row, idx) {
   // Column names จาก Google Form (ตรงกับ Sheets header)
   const timestamp  = String(row['Timestamp'] || '');
-  const reporter   = String(row['👤 ชื่อ-สกุล Reporter Name *'] || row['👤 ชื่อ-สกุล Reporter Name'] || '');
-  const dept       = String(row['แผนก / ตำแหน่ง Dept / Position'] || '');
+  const reporter = (() => {
+    for (const k of Object.keys(row)) {
+      if (k.includes('ชื่อ-สกุล') || k.includes('ชื่อ') || k.includes('Reporter')) {
+        const v = String(row[k]||'').trim(); if(v) return v;
+      }
+    } return '';
+  })();
+  const dept = (() => {
+    for (const k of Object.keys(row)) {
+      if (k.includes('แผนก') || k.includes('ตำแหน่ง') || k.includes('Dept') || k.includes('Position')) {
+        const v = String(row[k]||'').trim(); if(v) return v;
+      }
+    } return '';
+  })();
   const dateStr    = String(row['วันที่ Date *'] || row['วันที่ Date'] || (timestamp ? timestamp.split(' ')[0] : ''));
   const timeStr    = String(row['เวลา Time *'] || row['เวลา Time'] || '');
-  const building   = String(row['อาคาร / โซน Building / Zone *'] || row['อาคาร / โซน Building / Zone'] || '');
-  const area       = String(row['📍 พื้นที่ / จุดที่พบ Specific Area *'] || row['📍 พื้นที่ / จุดที่พบ Specific Area'] || '');
+  const building = (() => {
+    for (const k of Object.keys(row)) {
+      if (k.includes('อาคาร') || k.includes('โซน') || k.includes('Building') || k.includes('Zone')) {
+        const v = String(row[k]||'').trim(); if(v) return v;
+      }
+    } return '';
+  })();
+  const area = (() => {
+    for (const k of Object.keys(row)) {
+      if (k.includes('พื้นที่') || k.includes('จุดที่พบ') || k.includes('Specific Area')) {
+        const v = String(row[k]||'').trim(); if(v) return v;
+      }
+    } return '';
+  })();
   const typeRaw    = String(row['เลือกประเภท Select Type *'] || row['เลือกประเภท Select Type'] || '');
   const category   = String(row['เลือกหมวดหมู่ที่เกี่ยวข้อง Select related category *'] || row['เลือกหมวดหมู่ที่เกี่ยวข้อง Select related category'] || '');
-  const desc       = String(row['📝 คำอธิบายสิ่งที่พบ Describe what was observed *'] || row['📝 คำอธิบายสิ่งที่พบ Describe what was observed'] || '');
-  const suggest    = String(row['ข้อเสนอแนะในการแก้ไข Suggested Corrective Action'] || '');
+  // Description — try multiple key variants
+  const desc = (() => {
+    const keys = Object.keys(row);
+    // Try exact match first
+    for (const k of keys) {
+      if (k.includes('คำอธิบาย') || k.includes('Describe') || k.includes('observed')) {
+        const v = String(row[k] || '').trim();
+        if (v) return v;
+      }
+    }
+    return '';
+  })();
+  // Suggestion — try multiple key variants
+  const suggest = (() => {
+    const keys = Object.keys(row);
+    for (const k of keys) {
+      if (k.includes('ข้อเสนอแนะ') || k.includes('Suggestion') || k.includes('Corrective')) {
+        const v = String(row[k] || '').trim();
+        if (v) return v;
+      }
+    }
+    return '';
+  })();
   const riskRaw    = String(row['ประเมินระดับความเสี่ยง Select risk level *'] || row['ประเมินระดับความเสี่ยง Select risk level'] || '');
   const status     = String(row['Status'] || row['สถานะ'] || 'Open');
   const assigned   = String(row['Assigned'] || row['ผู้รับผิดชอบ'] || '');
