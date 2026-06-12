@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FM-HSE-06-02/03 | SOC Tracking Dashboard</title>
+<style>
+* { box-sizing: border-box; margin:0; padding:0; }
+body { font-family: 'Segoe UI', sans-serif; background: #f0f4f8; color: #1a1a2e; }
+
+.header {
+  background: linear-gradient(135deg, #1F3864 0%, #2E75B6 100%);
+  color: white; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between;
+}
+.header h1 { font-size: 17px; font-weight: 700; }
+.header .sub { font-size: 12px; opacity: 0.75; margin-top: 3px; }
+.header-btns { display: flex; gap: 8px; }
+.hbtn {
+  padding: 8px 14px; border-radius: 8px; border: 1.5px solid rgba(255,255,255,0.5);
+  color: white; background: transparent; cursor: pointer; font-size: 12px; font-family: inherit; transition: all 0.2s;
+}
+.hbtn:hover { background: rgba(255,255,255,0.2); }
+.hbtn.primary { background: rgba(255,255,255,0.25); }
+
+.container { max-width: 1100px; margin: 0 auto; padding: 20px 16px 40px; }
+
+/* KPI Cards */
+.kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+.kpi-card {
+  background: white; border-radius: 12px; padding: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.07); text-align: center; border-top: 4px solid #2E75B6;
+}
+.kpi-card.danger { border-top-color: #e53e3e; }
+.kpi-card.warning { border-top-color: #d69e2e; }
+.kpi-card.success { border-top-color: #38a169; }
+.kpi-card.info { border-top-color: #2E75B6; }
+.kpi-value { font-size: 32px; font-weight: 900; color: #1F3864; }
+.kpi-label { font-size: 12px; color: #666; margin-top: 4px; }
+.kpi-target { font-size: 11px; color: #999; margin-top: 3px; }
+.kpi-badge {
+  display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; margin-top: 6px;
+}
+.badge-ok { background: #c6f6d5; color: #276749; }
+.badge-warn { background: #fefcbf; color: #7b6002; }
+.badge-bad { background: #fed7d7; color: #c53030; }
+
+/* Controls */
+.controls {
+  background: white; border-radius: 12px; padding: 14px 16px; margin-bottom: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.07); display: flex; gap: 10px; flex-wrap: wrap; align-items: center;
+}
+.controls select, .controls input {
+  padding: 8px 12px; border: 1.5px solid #ddd; border-radius: 8px; font-size: 13px;
+  font-family: inherit; background: #fafafa;
+}
+.controls select:focus, .controls input:focus { outline: none; border-color: #2E75B6; }
+.filter-label { font-size: 12px; font-weight: 600; color: #1F3864; }
+
+/* Table */
+.table-card {
+  background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.07); overflow: hidden;
+  margin-bottom: 16px;
+}
+.table-header {
+  background: #1F3864; color: white; padding: 12px 16px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.table-header h2 { font-size: 14px; font-weight: 700; }
+.count-badge { background: rgba(255,255,255,0.2); padding: 3px 10px; border-radius: 12px; font-size: 12px; }
+
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+thead th {
+  background: #f7fafc; padding: 10px 12px; text-align: left;
+  font-weight: 700; color: #2d3748; border-bottom: 2px solid #e2e8f0; white-space: nowrap;
+}
+tbody tr { border-bottom: 1px solid #e2e8f0; transition: background 0.15s; }
+tbody tr:hover { background: #f0f7ff; }
+tbody td { padding: 10px 12px; vertical-align: middle; }
+
+/* Risk badges */
+.risk-badge {
+  padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 700;
+  white-space: nowrap; display: inline-block;
+}
+.risk-HIGH { background: #fed7d7; color: #c53030; }
+.risk-MEDIUM { background: #fefcbf; color: #7b6002; }
+.risk-LOW { background: #c6f6d5; color: #276749; }
+
+/* Status badges */
+.status-badge {
+  padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; display: inline-block;
+}
+.status-Open { background: #bee3f8; color: #1a365d; }
+.status-In-Progress { background: #fefcbf; color: #7b6002; }
+.status-Closed { background: #c6f6d5; color: #276749; }
+.status-Overdue { background: #fed7d7; color: #c53030; }
+
+/* Action buttons */
+.action-btn {
+  padding: 5px 10px; border-radius: 6px; border: none; cursor: pointer; font-size: 11px;
+  font-family: inherit; margin-right: 4px; transition: opacity 0.2s;
+}
+.action-btn:hover { opacity: 0.8; }
+.btn-edit { background: #ebf8ff; color: #2b6cb0; }
+.btn-close { background: #c6f6d5; color: #276749; }
+.btn-delete { background: #fed7d7; color: #c53030; }
+
+/* Modal */
+.modal-overlay {
+  display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+  z-index: 1000; align-items: center; justify-content: center; padding: 16px;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: white; border-radius: 16px; padding: 24px; max-width: 560px; width: 100%;
+  max-height: 90vh; overflow-y: auto;
+}
+.modal h2 { color: #1F3864; font-size: 16px; margin-bottom: 16px; }
+.modal-field { margin-bottom: 12px; }
+.modal-field label { display: block; font-size: 12px; font-weight: 600; color: #1F3864; margin-bottom: 4px; }
+.modal-field input, .modal-field select, .modal-field textarea {
+  width: 100%; padding: 9px 12px; border: 1.5px solid #ddd; border-radius: 8px;
+  font-size: 14px; font-family: inherit;
+}
+.modal-field textarea { min-height: 80px; resize: vertical; }
+.modal-btns { display: flex; gap: 10px; margin-top: 16px; }
+.modal-btns button {
+  flex: 1; padding: 11px; border: none; border-radius: 8px; cursor: pointer;
+  font-size: 14px; font-family: inherit; font-weight: 600;
+}
+.modal-save { background: #1F3864; color: white; }
+.modal-cancel { background: #e2e8f0; color: #2d3748; }
+
+/* Add entry form */
+.add-card {
+  background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+  margin-bottom: 16px; overflow: hidden;
+}
+.add-toggle {
+  padding: 12px 16px; cursor: pointer; display: flex; align-items: center; justify-content: space-between;
+  font-weight: 700; color: #1F3864; font-size: 14px; user-select: none;
+}
+.add-toggle:hover { background: #f0f7ff; }
+.add-body { display: none; padding: 16px; border-top: 1px solid #e2e8f0; }
+.add-body.open { display: block; }
+.add-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.add-grid.full { grid-template-columns: 1fr; }
+.add-submit {
+  margin-top: 12px; padding: 11px 24px; background: #1F3864; color: white;
+  border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-family: inherit; font-weight: 600;
+}
+
+/* Overdue highlight */
+tbody tr.overdue-row { background: #fff5f5; }
+tbody tr.overdue-row:hover { background: #fed7d7; }
+
+/* Empty state */
+.empty-state { padding: 40px; text-align: center; color: #888; }
+.empty-state .icon { font-size: 40px; }
+
+@media(max-width:700px) {
+  .kpi-grid { grid-template-columns: 1fr 1fr; }
+  .add-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>📊 SOC Tracking Dashboard — ติดตามการแก้ไข SOC Card</h1>
+    <div class="sub">FM-HSE-06-02 / FM-HSE-06-03 | WI-HSE-06 Rev.00 | Corrective Action Follow-up</div>
+  </div>
+  <div class="header-btns">
+    <button class="hbtn" onclick="exportCSV()">📥 Export CSV</button>
+    <button class="hbtn" onclick="loadData()">🔄 Refresh</button>
+    <button class="hbtn primary" onclick="document.getElementById('print-section').click()">🖨️ Print</button>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- KPI Cards -->
+  <div class="kpi-grid" id="kpi-grid">
+    <div class="kpi-card info">
+      <div class="kpi-value" id="kpi-total">0</div>
+      <div class="kpi-label">SOC ทั้งหมด / Total SOC</div>
+      <div class="kpi-target">เดือนนี้ / This Month</div>
+    </div>
+    <div class="kpi-card danger">
+      <div class="kpi-value" id="kpi-open">0</div>
+      <div class="kpi-label">เปิดอยู่ / Open</div>
+      <div class="kpi-target">ยังไม่แก้ไข / Pending</div>
+    </div>
+    <div class="kpi-card success">
+      <div class="kpi-value" id="kpi-closure">0%</div>
+      <div class="kpi-label">อัตราปิด / Closure Rate</div>
+      <div class="kpi-target">เป้า / Target: ≥95%</div>
+      <div id="kpi-closure-badge" class="kpi-badge"></div>
+    </div>
+    <div class="kpi-card warning">
+      <div class="kpi-value" id="kpi-overdue">0</div>
+      <div class="kpi-label">เกินกำหนด / Overdue</div>
+      <div class="kpi-target">ต้องดำเนินการด่วน</div>
+    </div>
+  </div>
+
+  <!-- Add New Entry Toggle -->
+  <div class="add-card">
+    <div class="add-toggle" onclick="toggleAdd()">
+      ➕ เพิ่ม SOC ใหม่ / Add New SOC Entry
+      <span id="add-arrow">▼</span>
+    </div>
+    <div class="add-body" id="add-body">
+      <div class="add-grid">
+        <div class="modal-field">
+          <label>SOC No. / รหัส</label>
+          <input type="text" id="add-id" placeholder="SOC-202406-001">
+        </div>
+        <div class="modal-field">
+          <label>วันที่ / Date *</label>
+          <input type="date" id="add-date">
+        </div>
+        <div class="modal-field">
+          <label>ผู้รายงาน / Reporter *</label>
+          <input type="text" id="add-reporter" placeholder="ชื่อ-สกุล">
+        </div>
+        <div class="modal-field">
+          <label>แผนก / Dept</label>
+          <input type="text" id="add-dept" placeholder="เช่น Production">
+        </div>
+        <div class="modal-field">
+          <label>สถานที่ / Location *</label>
+          <input type="text" id="add-location" placeholder="อาคาร / พื้นที่">
+        </div>
+        <div class="modal-field">
+          <label>ประเภท / Type *</label>
+          <select id="add-type">
+            <option value="">-- เลือก --</option>
+            <option>Unsafe Condition</option>
+            <option>Unsafe Act</option>
+            <option>Near Miss</option>
+            <option>Good Practice</option>
+          </select>
+        </div>
+        <div class="modal-field">
+          <label>ระดับ / Risk Level *</label>
+          <select id="add-risk">
+            <option value="">-- เลือก --</option>
+            <option value="HIGH">🔴 HIGH (แก้ไขใน 24 ชม.)</option>
+            <option value="MEDIUM">🟡 MEDIUM (แก้ไขใน 7 วัน)</option>
+            <option value="LOW">🟢 LOW (แก้ไขใน 30 วัน)</option>
+          </select>
+        </div>
+        <div class="modal-field">
+          <label>สถานะ / Status</label>
+          <select id="add-status">
+            <option value="Open">Open</option>
+            <option value="In-Progress">In Progress</option>
+            <option value="Closed">Closed</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-field" style="margin-top:10px;">
+        <label>รายละเอียด / Description *</label>
+        <textarea id="add-desc" placeholder="อธิบายสิ่งที่พบ..."></textarea>
+      </div>
+      <div class="add-grid">
+        <div class="modal-field">
+          <label>ผู้รับผิดชอบแก้ไข / Assigned To</label>
+          <input type="text" id="add-assigned" placeholder="ชื่อผู้รับผิดชอบ">
+        </div>
+        <div class="modal-field">
+          <label>กำหนดเสร็จ / Due Date</label>
+          <input type="date" id="add-due">
+        </div>
+      </div>
+      <button class="add-submit" onclick="addEntry()">💾 บันทึก / Save Entry</button>
+    </div>
+  </div>
+
+  <!-- Filter Controls -->
+  <div class="controls">
+    <span class="filter-label">🔍 กรอง:</span>
+    <select id="filter-risk" onchange="renderTable()">
+      <option value="">ทุกระดับ / All Risk</option>
+      <option value="HIGH">🔴 HIGH</option>
+      <option value="MEDIUM">🟡 MEDIUM</option>
+      <option value="LOW">🟢 LOW</option>
+    </select>
+    <select id="filter-status" onchange="renderTable()">
+      <option value="">ทุกสถานะ / All Status</option>
+      <option value="Open">Open</option>
+      <option value="In-Progress">In Progress</option>
+      <option value="Closed">Closed</option>
+      <option value="Overdue">Overdue</option>
+    </select>
+    <select id="filter-type" onchange="renderTable()">
+      <option value="">ทุกประเภท / All Types</option>
+      <option>Unsafe Condition</option>
+      <option>Unsafe Act</option>
+      <option>Near Miss</option>
+      <option>Good Practice</option>
+    </select>
+    <input type="text" id="filter-search" placeholder="🔍 ค้นหา..." oninput="renderTable()" style="flex:1; min-width:150px;">
+  </div>
+
+  <!-- Main Table -->
+  <div class="table-card">
+    <div class="table-header">
+      <h2>📋 รายการ SOC Card ทั้งหมด / All SOC Entries</h2>
+      <div class="count-badge" id="table-count">0 รายการ</div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>SOC No.</th>
+            <th>วันที่</th>
+            <th>ผู้รายงาน</th>
+            <th>สถานที่</th>
+            <th>ประเภท</th>
+            <th>ระดับ</th>
+            <th>รายละเอียด</th>
+            <th>ผู้รับผิดชอบ</th>
+            <th>กำหนดเสร็จ</th>
+            <th>สถานะ</th>
+            <th>จัดการ</th>
+          </tr>
+        </thead>
+        <tbody id="soc-tbody">
+          <tr><td colspan="11" class="empty-state"><div class="icon">📭</div><br>ยังไม่มีข้อมูล / No entries yet</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<!-- Edit Modal -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <h2>✏️ แก้ไข SOC Entry / Edit Entry</h2>
+    <input type="hidden" id="edit-idx">
+    <div class="modal-field">
+      <label>สถานะ / Status</label>
+      <select id="edit-status">
+        <option value="Open">Open</option>
+        <option value="In-Progress">In Progress</option>
+        <option value="Closed">Closed</option>
+      </select>
+    </div>
+    <div class="modal-field">
+      <label>ผู้รับผิดชอบ / Assigned To</label>
+      <input type="text" id="edit-assigned">
+    </div>
+    <div class="modal-field">
+      <label>กำหนดเสร็จ / Due Date</label>
+      <input type="date" id="edit-due">
+    </div>
+    <div class="modal-field">
+      <label>หมายเหตุ / Remark</label>
+      <textarea id="edit-remark" placeholder="บันทึกการแก้ไข..."></textarea>
+    </div>
+    <div class="modal-btns">
+      <button class="modal-save" onclick="saveEdit()">💾 บันทึก / Save</button>
+      <button class="modal-cancel" onclick="closeModal()">ยกเลิก / Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Google Apps Script URL (same as SOC Card form) ──────────────────────
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbyVv1VVwgzF0czoSFms-O8FGPiOZ2plyWesoXBELcbZyCzd5oU7mwhVdZg_DL0B5aQ/exec';
+
+let data = [];
+let isSyncing = false;
+
+function showSyncStatus(msg, color = '#2E75B6') {
+  let el = document.getElementById('sync-status');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'sync-status';
+    el.style.cssText = 'position:fixed;bottom:20px;right:20px;padding:10px 18px;border-radius:10px;color:white;font-size:13px;font-weight:600;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,0.2);transition:opacity 0.5s;';
+    document.body.appendChild(el);
+  }
+  el.style.background = color;
+  el.style.opacity = '1';
+  el.textContent = msg;
+  if (color !== '#f6ad55') { // don't auto-hide loading
+    setTimeout(() => { el.style.opacity = '0'; }, 3000);
+  }
+}
+
+// ── Map Google Sheets row → local object ─────────────────────────────────
+function sheetRowToEntry(row, idx) {
+  // Helper: find value by partial key match
+  function get(keywords) {
+    for (const [k, v] of Object.entries(row)) {
+      if (keywords.some(kw => k.includes(kw))) {
+        const s = String(v === null || v === undefined ? '' : v).trim();
+        if (s) return s;
+      }
+    }
+    return '';
+  }
+
+  const timestamp = get(['Timestamp','ประทับเวลา']);
+  const reporter  = get(['ชื่อ-สกุล','Reporter Name']);
+  const dept      = get(['แผนก','ตำแหน่ง','Dept','Position']);
+  const dateStr   = get(['วันที่ Date','วันที่']) || (timestamp ? timestamp.split(' ')[0] : '');
+  const timeStr   = get(['เวลา Time','เวลา']);
+  const building  = get(['อาคาร','โซน','Building','Zone']);
+  const area      = get(['พื้นที่','จุดที่พบ','Specific Area']);
+  const typeRaw   = get(['เลือกประเภท','Select Type']);
+  const category  = get(['หมวดหมู่','related category']);
+  const desc      = get(['คำอธิบายสิ่งที่พบ','Describe what was observed']);
+  const suggest   = get(['ข้อเสนอแนะ','Suggested Corrective','Suggestion']);
+  const riskRaw   = get(['ระดับความเสี่ยง','Select risk level']);
+  const status    = get(['Status','สถานะ']) || 'Open';
+  const assigned  = get(['Assigned','ผู้รับผิดชอบ']);
+  const due       = get(['Due','กำหนด']);
+  const remark    = get(['Remark','หมายเหตุ']);
+
+  // Normalize type
+  const tl = typeRaw.toLowerCase();
+  const type = tl.includes('unsafe condition') || tl.includes('สภาพไม่ปลอดภัย') ? 'Unsafe Condition' :
+               tl.includes('unsafe act') || tl.includes('พฤติกรรมไม่ปลอดภัย') ? 'Unsafe Act' :
+               tl.includes('near miss') || tl.includes('เกือบเกิด') ? 'Near Miss' :
+               tl.includes('good practice') || tl.includes('แนวปฏิบัติ') ? 'Good Practice' : typeRaw;
+
+  // Normalize risk
+  const rl = riskRaw.toLowerCase();
+  const risk = rl.includes('สูง') || rl.includes('high') || rl.includes('🔴') ? 'HIGH' :
+               rl.includes('กลาง') || rl.includes('medium') || rl.includes('🟢') || rl.includes('potential') ? 'MEDIUM' :
+               rl.includes('ต่ำ') || rl.includes('low') || rl.includes('🟡') ? 'LOW' :
+               rl.includes('ไม่มี') || type === 'Good Practice' ? 'N/A' : 'LOW';
+
+  // Auto due date
+  function autoDue(r, d) {
+    const days = { HIGH: 1, MEDIUM: 7, LOW: 30 };
+    const dt = new Date(d);
+    if (isNaN(dt) || !days[r]) return '';
+    dt.setDate(dt.getDate() + days[r]);
+    return dt.toISOString().split('T')[0];
+  }
+
+  // Format date nicely
+  function fmtDate(s) {
+    if (!s) return '';
+    const d = new Date(s);
+    if (isNaN(d)) return s;
+    return d.toISOString().split('T')[0];
+  }
+
+  const d = new Date(timestamp || dateStr);
+  const y = isNaN(d) ? new Date().getFullYear() : d.getFullYear();
+  const m = isNaN(d) ? String(new Date().getMonth()+1).padStart(2,'0') : String(d.getMonth()+1).padStart(2,'0');
+  const socId = 'SOC-' + y + m + '-' + String(idx + 1).padStart(3,'0');
+
+  return {
+    id:          socId,
+    date:        fmtDate(dateStr || timestamp),
+    time:        timeStr,
+    reporter:    reporter,
+    dept:        dept,
+    location:    building && area ? building + ' - ' + area : (building || area),
+    type:        type,
+    category:    category,
+    risk:        risk,
+    description: desc,
+    suggestion:  suggest,
+    status:      status,
+    assigned:    assigned,
+    due:         due || autoDue(risk, dateStr || timestamp),
+    remark:      remark,
+    submittedAt: timestamp,
+  };
+}
+// ── ส่งข้อมูลผ่าน hidden iframe (วิธีเดียวที่ bypass CORS กับ GAS ได้) ────
+function iframePost(payload) {
+  let iframe = document.getElementById('gas-iframe');
+  if (!iframe) {
+    iframe = document.createElement('iframe');
+    iframe.id = 'gas-iframe';
+    iframe.name = 'gas-iframe';
+    iframe.style.display = 'none';
+    document.body.appendChild(iframe);
+  }
+  const form = document.createElement('form');
+  form.method = 'POST';
+  form.action = GAS_URL;
+  form.target = 'gas-iframe';
+  form.style.display = 'none';
+  const inp = document.createElement('input');
+  inp.type = 'hidden';
+  inp.name = 'payload';
+  inp.value = JSON.stringify(payload);
+  form.appendChild(inp);
+  document.body.appendChild(form);
+  form.submit();
+  setTimeout(() => { try { form.remove(); } catch(e){} }, 3000);
+}
+
+// ── Sync update back to Google Sheets ────────────────────────────────────
+function syncUpdateToSheet(entry) {
+  try {
+    iframePost({ action: 'update', entry });
+  } catch(e) { console.warn('Sync update failed:', e); }
+}
+
+// ── Load from Google Sheets via JSONP (แก้ปัญหา CORS บน GET) ─────────────
+function loadData() {
+  showSyncStatus('🔄 กำลังโหลดข้อมูล...', '#f6ad55');
+  isSyncing = true;
+
+  // Remove old script tag if any
+  const old = document.getElementById('gas-jsonp');
+  if (old) old.remove();
+
+  // Set global callback
+  window.gasCallback = function(rows) {
+    if (Array.isArray(rows) && rows.length > 0) {
+      data = rows.map(sheetRowToEntry).filter(e => e.id);
+      showSyncStatus('✅ โหลดข้อมูลสำเร็จ ' + data.length + ' รายการ', '#38a169');
+    } else {
+      data = [];
+      showSyncStatus('📭 ยังไม่มีข้อมูล — กด Refresh', '#718096');
+    }
+    isSyncing = false;
+    updateKPIs();
+    renderTable();
+  };
+
+  const script = document.createElement('script');
+  script.id = 'gas-jsonp';
+  script.src = GAS_URL + '?callback=gasCallback&t=' + Date.now();
+  script.onerror = function() {
+    showSyncStatus('⚠️ เชื่อมต่อไม่ได้', '#e53e3e');
+    data = getDemoData();
+    isSyncing = false;
+    updateKPIs();
+    renderTable();
+  };
+  document.head.appendChild(script);
+}
+
+function saveData() {
+  // No localStorage needed — Google Sheets is the single source of truth
+  updateKPIs();
+  renderTable();
+}
+
+function getDemoData() {
+  const today = new Date();
+  const fmt = (d) => d.toISOString().split('T')[0];
+  const ago = (n) => { const d=new Date(today); d.setDate(d.getDate()-n); return fmt(d); };
+  const due = (n) => { const d=new Date(today); d.setDate(d.getDate()+n); return fmt(d); };
+  return [
+    { id:'SOC-202406-001', date:ago(2), reporter:'สมชาย ใจดี', dept:'Production', location:'อาคาร A - ชั้น 2', type:'Unsafe Condition', risk:'HIGH', description:'สายไฟชำรุดบริเวณแผงควบคุม มีประกายไฟ', suggestion:'เปลี่ยนสายไฟทันที', assigned:'ช่างไฟฟ้า', due:due(0), status:'In-Progress', remark:'' },
+    { id:'SOC-202406-002', date:ago(5), reporter:'วิไล แสงทอง', dept:'Warehouse', location:'โกดัง B - ทางเดิน', type:'Unsafe Act', risk:'MEDIUM', description:'พนักงานไม่สวมรองเท้า Safety ในพื้นที่อันตราย', suggestion:'แจ้งเตือนและแจก PPE', assigned:'Supervisor', due:due(2), status:'Open', remark:'' },
+    { id:'SOC-202406-003', date:ago(10), reporter:'ประสิทธิ์ มั่นคง', dept:'Maintenance', location:'อาคาร C - ห้องเครื่อง', type:'Near Miss', risk:'HIGH', description:'เกือบเกิดอุบัติเหตุจากเครื่องจักรหมุนโดยไม่มีฝาครอบ', suggestion:'ติดตั้งฝาครอบป้องกันทันที', assigned:'วิศวกรซ่อมบำรุง', due:ago(3), status:'Closed', remark:'ติดตั้งฝาครอบเรียบร้อย 10/06/2024' },
+    { id:'SOC-202406-004', date:ago(1), reporter:'ดวงใจ สวัสดี', dept:'QC', location:'ห้อง Lab - โต๊ะทำงาน', type:'Unsafe Condition', risk:'LOW', description:'ไม่มีป้ายเตือนบริเวณสารเคมีอันตราย', suggestion:'ติดป้ายเตือน GHS', assigned:'', due:due(20), status:'Open', remark:'' },
+    { id:'SOC-202406-005', date:ago(8), reporter:'รัตนา พรสวรรค์', dept:'HR', location:'อาคาร A - บันได', type:'Unsafe Condition', risk:'MEDIUM', description:'ราวจับบันไดหลวม อาจทำให้ลื่นตก', suggestion:'ขัน/เปลี่ยนราวจับ', assigned:'Facility', due:ago(1), status:'Open', remark:'' },
+  ];
+}
+
+function getDueTarget(risk) {
+  if (risk === 'HIGH') return 1;
+  if (risk === 'MEDIUM') return 7;
+  return 30;
+}
+
+function getStatus(entry) {
+  if (entry.status === 'Closed') return 'Closed';
+  if (!entry.due) return entry.status;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const due = new Date(entry.due);
+  if (due < today && entry.status !== 'Closed') return 'Overdue';
+  return entry.status || 'Open';
+}
+
+function updateKPIs() {
+  const now = new Date();
+  const thisMonth = data.filter(e => {
+    const d = new Date(e.date);
+    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+  });
+  const total = thisMonth.length;
+  const closed = thisMonth.filter(e => e.status === 'Closed').length;
+  const open = thisMonth.filter(e => e.status !== 'Closed').length;
+  const overdue = thisMonth.filter(e => getStatus(e) === 'Overdue').length;
+  const rate = total > 0 ? Math.round(closed/total*100) : 0;
+
+  document.getElementById('kpi-total').textContent = total;
+  document.getElementById('kpi-open').textContent = open;
+  document.getElementById('kpi-closure').textContent = rate + '%';
+  document.getElementById('kpi-overdue').textContent = overdue;
+
+  const badge = document.getElementById('kpi-closure-badge');
+  if (rate >= 95) { badge.textContent = '✅ บรรลุเป้า / On Target'; badge.className = 'kpi-badge badge-ok'; }
+  else if (rate >= 80) { badge.textContent = '⚠️ ใกล้เป้า / Near Target'; badge.className = 'kpi-badge badge-warn'; }
+  else { badge.textContent = '❌ ต่ำกว่าเป้า / Below Target'; badge.className = 'kpi-badge badge-bad'; }
+}
+
+function renderTable() {
+  const risk = document.getElementById('filter-risk').value;
+  const status = document.getElementById('filter-status').value;
+  const type = document.getElementById('filter-type').value;
+  const search = document.getElementById('filter-search').value.toLowerCase();
+
+  let filtered = data.filter(e => {
+    const s = getStatus(e);
+    if (risk && e.risk !== risk) return false;
+    if (status && s !== status) return false;
+    if (type && e.type !== type) return false;
+    if (search && !JSON.stringify(e).toLowerCase().includes(search)) return false;
+    return true;
+  });
+
+  const tbody = document.getElementById('soc-tbody');
+  document.getElementById('table-count').textContent = filtered.length + ' รายการ';
+
+  if (filtered.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="11" class="empty-state"><div class="icon">🔍</div><br>ไม่พบข้อมูล / No results</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = filtered.map((e, fi) => {
+    const realIdx = data.indexOf(e);
+    const s = getStatus(e);
+    const isOverdue = s === 'Overdue';
+    const desc = e.description.length > 50 ? e.description.slice(0,50)+'…' : e.description;
+    return `
+    <tr class="${isOverdue ? 'overdue-row' : ''}">
+      <td><strong>${e.id || '-'}</strong></td>
+      <td>${e.date}</td>
+      <td>${e.reporter}<br><small style="color:#888">${e.dept||''}</small></td>
+      <td style="max-width:120px;word-break:break-word;">${e.location}</td>
+      <td>${e.type}</td>
+      <td><span class="risk-badge risk-${e.risk}">${e.risk}</span></td>
+      <td style="max-width:160px;">${desc}</td>
+      <td>${e.assigned||'<span style="color:#ccc">-</span>'}</td>
+      <td>${e.due ? (isOverdue ? '<span style="color:#c53030;font-weight:700;">⚠️ '+e.due+'</span>' : e.due) : '-'}</td>
+      <td><span class="status-badge status-${s.replace(' ','-')}">${s}</span></td>
+      <td style="white-space:nowrap;">
+        <button class="action-btn btn-edit" onclick="openEdit(${realIdx})">✏️ แก้ไข</button>
+        ${s!=='Closed' ? `<button class="action-btn btn-close" onclick="quickClose(${realIdx})">✅ ปิด</button>` : ''}
+        <button class="action-btn btn-delete" onclick="deleteEntry(${realIdx})">🗑️</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function toggleAdd() {
+  const body = document.getElementById('add-body');
+  const arrow = document.getElementById('add-arrow');
+  const open = body.classList.toggle('open');
+  arrow.textContent = open ? '▲' : '▼';
+}
+
+async function addEntry() {
+  const date = document.getElementById('add-date').value;
+  const reporter = document.getElementById('add-reporter').value.trim();
+  const desc = document.getElementById('add-desc').value.trim();
+  const risk = document.getElementById('add-risk').value;
+  const type = document.getElementById('add-type').value;
+
+  if (!date || !reporter || !desc || !risk || !type) {
+    alert('กรุณากรอกข้อมูลที่จำเป็น / Please fill required fields'); return;
+  }
+
+  const y = date.slice(0,4);
+  const m = date.slice(5,7);
+  const id = document.getElementById('add-id').value || `SOC-${y}${m}-${String(data.length+1).padStart(3,'0')}`;
+  const building = document.getElementById('add-location').value;
+
+  const newEntry = {
+    id, date,
+    time: '',
+    reporter,
+    dept: document.getElementById('add-dept').value,
+    phone: '',
+    building,
+    area: '',
+    location: building,
+    type,
+    risk,
+    description: desc,
+    suggestion: '',
+    assigned: document.getElementById('add-assigned').value,
+    due: document.getElementById('add-due').value,
+    status: document.getElementById('add-status').value,
+    remark: '',
+    submittedAt: new Date().toISOString()
+  };
+
+  // Push to Google Sheets
+  try {
+    await fetch(GAS_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newEntry)
+    });
+    showSyncStatus('✅ เพิ่มข้อมูลเข้า Google Sheets แล้ว', '#38a169');
+  } catch(e) {
+    showSyncStatus('⚠️ ไม่สามารถส่งข้อมูลได้', '#e53e3e');
+  }
+
+  data.unshift(newEntry);
+  saveData();
+
+  // Reset form
+  ['add-id','add-date','add-reporter','add-dept','add-location','add-desc','add-assigned','add-due'].forEach(id => document.getElementById(id).value='');
+  document.getElementById('add-type').value='';
+  document.getElementById('add-risk').value='';
+  document.getElementById('add-status').value='Open';
+  toggleAdd();
+
+  // Reload from Sheets after short delay
+  setTimeout(loadData, 2000);
+}
+
+function openEdit(idx) {
+  const e = data[idx];
+  document.getElementById('edit-idx').value = idx;
+  document.getElementById('edit-status').value = e.status;
+  document.getElementById('edit-assigned').value = e.assigned || '';
+  document.getElementById('edit-due').value = e.due || '';
+  document.getElementById('edit-remark').value = e.remark || '';
+  document.getElementById('modal').classList.add('open');
+}
+
+function saveEdit() {
+  const idx = parseInt(document.getElementById('edit-idx').value);
+  data[idx].status   = document.getElementById('edit-status').value;
+  data[idx].assigned = document.getElementById('edit-assigned').value;
+  data[idx].due      = document.getElementById('edit-due').value;
+  data[idx].remark   = document.getElementById('edit-remark').value;
+  syncUpdateToSheet(data[idx]);
+  showSyncStatus('💾 บันทึกและซิงก์แล้ว / Saved & Synced', '#38a169');
+  saveData(); closeModal();
+}
+
+function quickClose(idx) {
+  data[idx].status = 'Closed';
+  syncUpdateToSheet(data[idx]);
+  showSyncStatus('✅ ปิด SOC แล้ว / SOC Closed', '#38a169');
+  saveData();
+}
+
+function deleteEntry(idx) {
+  if (confirm('ลบรายการนี้ใช่หรือไม่? / Delete this entry?')) {
+    data.splice(idx, 1);
+    saveData(); updateKPIs(); renderTable();
+  }
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.remove('open');
+}
+
+document.getElementById('modal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+function exportCSV() {
+  const headers = ['SOC No.','Date','Reporter','Dept','Location','Type','Risk','Description','Assigned','Due Date','Status','Remark'];
+  const rows = data.map(e => [
+    e.id||'', e.date||'', e.reporter||'', e.dept||'', e.location||'',
+    e.type||'', e.risk||'', e.description||'', e.assigned||'', e.due||'', e.status||'', e.remark||''
+  ].map(v => `"${String(v).replace(/"/g,'""')}"`).join(','));
+
+  const csv = '\uFEFF' + [headers.join(','), ...rows].join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = `SOC_Report_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+}
+
+// Initialize
+loadData();  // pulls from Google Sheets
+const today = new Date();
+document.getElementById('add-date').value = today.toISOString().split('T')[0];
+const daysAhead = { HIGH:1, MEDIUM:7, LOW:30 };
+document.getElementById('add-risk').addEventListener('change', function() {
+  const d = new Date();
+  d.setDate(d.getDate() + (daysAhead[this.value]||7));
+  document.getElementById('add-due').value = d.toISOString().split('T')[0];
+});
+
+// Auto-refresh every 60 seconds
+setInterval(() => {
+  if (!isSyncing) loadData();
+}, 60000);
+</script>
+</body>
+</html>
